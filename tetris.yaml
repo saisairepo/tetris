@@ -1,0 +1,69 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: tetris
+  namespace: tetris
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: tetris-app
+  template:
+    metadata:
+      labels:
+        app: tetris-app
+    spec:
+      containers:
+      - name: t-cont
+        image: ghcr.io/saisairepo/tetris:v2.8
+        ports:
+        - containerPort: 3005
+        resources:
+          requests:
+            memory: "4Gi"
+            cpu: "2"
+          limits:
+            memory: "4Gi"
+            cpu: "2"
+      imagePullSecrets:
+      - name: tetris-secret
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: t-service
+  namespace: tetris
+spec:
+  selector:
+    app: tetris-app
+  ports:
+  - name: http
+    port: 80
+    targetPort: 3005
+  type: ClusterIP
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: tetris-ingress
+  namespace: tetris
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+spec:
+  ingressClassName: nginx
+  tls:
+    - hosts:
+        - tetris.mlhuillier.com
+      secretName: com-tls
+  rules:
+    - host: tetris.mlhuillier.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: t-service
+                port:
+                  number: 80
